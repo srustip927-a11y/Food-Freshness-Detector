@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Food Freshness Detector</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 450px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+        }
+
+        h1 {
+            color: #198754;
+        }
+
+        .button {
+            display: block;
+            width: 90%;
+            margin: 12px auto;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 17px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .camera-button {
+            background: #2196f3;
+        }
+
+        .gallery-button {
+            background: #6c757d;
+        }
+
+        #checkButton {
+            background: #198754;
+        }
+
+        #checkButton:disabled {
+            background: #999;
+        }
+
+        input {
+            display: none;
+        }
+
+        #preview {
+            width: 100%;
+            max-width: 320px;
+            max-height: 320px;
+            object-fit: contain;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        #loading {
+            display: none;
+            margin-top: 20px;
+        }
+
+        #result {
+            margin-top: 20px;
+        }
+
+        .result-box {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .fresh {
+            color: green;
+            font-weight: bold;
+        }
+
+        .rotten {
+            color: red;
+            font-weight: bold;
+        }
+
+        .light {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            margin: 15px auto;
+            display: none;
+        }
+
+        .green-light {
+            background: green;
+            box-shadow: 0 0 25px green;
+        }
+
+        .red-light {
+            background: red;
+            box-shadow: 0 0 25px red;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+    <h1>🍎 Food Freshness Detector</h1>
+
+    <p>Select how you want to provide the food image.</p>
+
+
+    <!-- CAMERA INPUT -->
+
+    <button
+        class="button camera-button"
+        onclick="openCamera()">
+
+        📷 Take Photo
+
+    </button>
+
+
+    <input
+        type="file"
+        id="cameraInput"
+        accept="image/*"
+        capture="environment"
+    >
+
+
+    <!-- GALLERY INPUT -->
+
+    <button
+        class="button gallery-button"
+        onclick="openGallery()">
+
+        🖼️ Choose Existing Photo
+
+    </button>
+
+
+    <input
+        type="file"
+        id="galleryInput"
+        accept="image/*"
+    >
+
+
+    <!-- IMAGE PREVIEW -->
+
+    <img
+        id="preview"
+        alt="Food photo"
+    >
+
+
+    <!-- CHECK BUTTON -->
+
+    <button
+        id="checkButton"
+        class="button"
+        onclick="checkFood()"
+        disabled>
+
+        🔍 Check Food
+
+    </button>
+
+
+    <!-- LOADING -->
+
+    <div id="loading">
+
+        ⏳ Checking food...
+
+    </div>
+
+
+    <!-- GREEN / RED LIGHT -->
+
+    <div
+        id="light"
+        class="light">
+    </div>
+
+
+    <!-- RESULT -->
+
+    <div id="result"></div>
+
+</div>
+
+
+<script>
+
+
+/* =====================================================
+   VARIABLES
+===================================================== */
+
+let compressedImageFile = null;
+
+
+/* =====================================================
+   OPEN CAMERA
+===================================================== */
+
+function openCamera() {
+
+    document
+        .getElementById("cameraInput")
+        .click();
+
+}
+
+
+/* =====================================================
+   OPEN GALLERY
+===================================================== */
+
+function openGallery() {
+
+    document
+        .getElementById("galleryInput")
+        .click();
+
+}
+
+
+/* =====================================================
+   CAMERA PHOTO SELECTED
+===================================================== */
+
+document
+    .getElementById("cameraInput")
+    .addEventListener(
+        "change",
+        handleImage
+    );
+
+
+/* =====================================================
+   GALLERY PHOTO SELECTED
+===================================================== */
+
+document
+    .getElementById("galleryInput")
+    .addEventListener(
+        "change",
+        handleImage
+    );
+
+
+/* =====================================================
+   HANDLE PHOTO
+===================================================== */
+
+async function handleImage(event) {
+
+    const file =
+        event.target.files[0];
+
+    if (!file) {
+
+        return;
+
+    }
+
+
+    const result =
+        document.getElementById(
+            "result"
+        );
+
+    const preview =
+        document.getElementById(
+            "preview"
+        );
+
+    const checkButton =
+        document.getElementById(
+            "checkButton"
+        );
+
+
+    checkButton.disabled =
+        true;
+
+
+    result.innerHTML =
+        "⏳ Preparing image...";
+
+
+    try {
+
+        compressedImageFile =
+            await compressImage(file);
+
+
+        /*
+            Show compressed image.
+        */
+
+        preview.src =
+            URL.createObjectURL(
+                compressedImageFile
+            );
+
+        preview.style.display =
+            "block";
+
+
+        checkButton.disabled =
+            false;
+
+
+        result.innerHTML =
+            "✅ Photo ready. Tap Check Food.";
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        result.innerHTML = `
+            <p style="color:red;">
+                ❌ Could not prepare image.
+            </p>
+        `;
+
+    }
+
+}
+
+
+/* =====================================================
+   COMPRESS IMAGE
+===================================================== */
+
+function compressImage(file) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            const image =
+                new Image();
+
+            const objectURL =
+                URL.createObjectURL(file);
+
+
+            image.onload =
+                function() {
+
+                    /*
+                        Small image size to
+                        reduce memory usage.
+                    */
+
+                    const MAX_SIZE = 240;
+
+                    let width =
+                        image.width;
+
+                    let height =
+                        image.height;
+
+
+                    if (width > height) {
+
+                        if (width > MAX_SIZE) {
+
+                            height =
+                                Math.round(
+                                    height *
+                                    MAX_SIZE /
+                                    width
+                                );
+
+                            width =
+                                MAX_SIZE;
+
+                        }
+
+                    }
+
+                    else {
+
+                        if (height > MAX_SIZE) {
+
+                            width =
+                                Math.round(
+                                    width *
+                                    MAX_SIZE /
+                                    height
+                                );
+
+                            height =
+                                MAX_SIZE;
+
+                        }
+
+                    }
+
+
+                    const canvas =
+                        document.createElement(
+                            "canvas"
+                        );
+
+
+                    canvas.width =
+                        width;
+
+                    canvas.height =
+                        height;
+
+
+                    const context =
+                        canvas.getContext(
+                            "2d"
+                        );
+
+
+                    context.drawImage(
+                        image,
+                        0,
+                        0,
+                        width,
+                        height
+                    );
+
+
+                    canvas.toBlob(
+                        function(blob) {
+
+                            URL.revokeObjectURL(
+                                objectURL
+                            );
+
+
+                            if (!blob) {
+
+                                reject(
+                                    new Error(
+                                        "Image compression failed"
+                                    )
+                                );
+
+                                return;
+
+                            }
+
+
+                            const smallFile =
+                                new File(
+                                    [blob],
+                                    "food.jpg",
+                                    {
+                                        type:
+                                            "image/jpeg"
+                                    }
+                                );
+
+
+                            resolve(
+                                smallFile
+                            );
+
+                        },
+
+                        "image/jpeg",
+
+                        0.30
+
+                    );
+
+                };
+
+
+            image.onerror =
+                function() {
+
+                    URL.revokeObjectURL(
+                        objectURL
+                    );
+
+
+                    reject(
+                        new Error(
+                            "Unable to read image"
+                        )
+                    );
+
+                };
+
+
+            image.src =
+                objectURL;
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+   CHECK FOOD
+===================================================== */
+
+async function checkFood() {
+
+    if (!compressedImageFile) {
+
+        alert(
+            "Please take a photo or choose a photo first."
+        );
+
+        return;
+
+    }
+
+
+    const button =
+        document.getElementById(
+            "checkButton"
+        );
+
+    const loading =
+        document.getElementById(
+            "loading"
+        );
+
+    const result =
+        document.getElementById(
+            "result"
+        );
+
+    const light =
+        document.getElementById(
+            "light"
+        );
+
+
+    button.disabled =
+        true;
+
+
+    loading.style.display =
+        "block";
+
+
+    result.innerHTML =
+        "";
+
+
+    light.style.display =
+        "none";
+
+
+    try {
+
+        /*
+            Create FormData.
+        */
+
+        const formData =
+            new FormData();
+
+
+        formData.append(
+            "image",
+            compressedImageFile
+        );
+
+
+        /*
+            Send image to Flask.
+        */
+
+        const response =
+            await fetch(
+                "/predict",
+                {
+                    method: "POST",
+                    body: formData
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Server error: " +
+                response.status
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        console.log(data);
+
+
+        /*
+            No food detected.
+        */
+
+        if (
+            !data.detections ||
+            data.detections.length === 0
+        ) {
+
+            result.innerHTML = `
+
+                <div class="result-box">
+
+                    <h3 style="color:red;">
+                        ❌ No food detected
+                    </h3>
+
+                    <p>
+                        Try taking a clear photo
+                        with the food in the center.
+                    </p>
+
+                </div>
+
+            `;
+
+            return;
+
+        }
+
+
+        /*
+            Get first detection.
+        */
+
+        const item =
+            data.detections[0];
+
+
+        const freshness =
+            String(
+                item.freshness
+            ).toLowerCase();
+
+
+        const isFresh =
+            freshness === "fresh";
+
+
+        /*
+            GREEN / RED LIGHT
+        */
+
+        if (isFresh) {
+
+            light.className =
+                "light green-light";
+
+        }
+
+        else {
+
+            light.className =
+                "light red-light";
+
+        }
+
+
+        light.style.display =
+            "block";
+
+
+        /*
+            SHOW RESULT
+        */
+
+        result.innerHTML = `
+
+            <div class="result-box">
+
+                <h2>
+                    🍽️ ${item.food}
+                </h2>
+
+                <p>
+
+                    Freshness:
+
+                    <strong class="${
+                        isFresh
+                        ? "fresh"
+                        : "rotten"
+                    }">
+
+                        ${item.freshness}
+
+                    </strong>
+
+                </p>
+
+
+                <p>
+
+                    Confidence:
+
+                    <strong>
+
+                        ${item.confidence}%
+
+                    </strong>
+
+                </p>
+
+            </div>
+
+        `;
+
+    }
+
+
+    catch (error) {
+
+        console.error(error);
+
+
+        result.innerHTML = `
+
+            <div class="result-box">
+
+                <p style="color:red;">
+
+                    ❌ Unable to check food.
+
+                    <br><br>
+
+                    ${error.message}
+
+                </p>
+
+            </div>
+
+        `;
+
+    }
+
+
+    finally {
+
+        loading.style.display =
+            "none";
+
+
+        button.disabled =
+            false;
+
+    }
+
+}
+
+</script>
+
+
+</body>
+
+
+</html>
